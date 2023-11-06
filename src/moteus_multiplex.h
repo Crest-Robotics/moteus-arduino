@@ -532,11 +532,11 @@ class MultiplexParser {
   static constexpr int8_t kTheta = 9;
 
   double ReadConcrete(Resolution res, int8_t concrete_type) {
-#ifndef ARDUINO
+//#ifndef ARDUINO
     static constexpr double kMappingValues[] = {
-#else
-    static constexpr double PROGMEM kMappingValues[] = {
-#endif
+// #else
+//     static constexpr double PROGMEM kMappingValues[] = {
+// #endif
       1.0, 1.0, 1.0,           // kInt
       0.01, 0.0001, 0.00001,   // kPosition
       0.1, 0.00025, 0.00001,   // kVelocity
@@ -549,15 +549,15 @@ class MultiplexParser {
       1.0 / 127.0 * M_PI, 1.0 / 32767.0 * M_PI, 1.0 / 2147483647.0 * M_PI, // kTheta
     };
 
-#ifndef ARDUINO
+//#ifndef ARDUINO
     const double int8_scale = kMappingValues[concrete_type * 3 + 0];
     const double int16_scale = kMappingValues[concrete_type * 3 + 1];
     const double int32_scale = kMappingValues[concrete_type * 3 + 2];
-#else
-    const double int8_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 0);
-    const double int16_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 1);
-    const double int32_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 2);
-#endif
+ //#else
+//     const double int8_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 0);
+//     const double int16_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 1);
+//     const double int32_scale = pgm_read_float_near(kMappingValues + concrete_type * 3 + 2);
+//#endif
 
     switch (res) {
       case Resolution::kInt8: {

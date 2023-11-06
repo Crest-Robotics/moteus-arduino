@@ -23,16 +23,16 @@
 
 #include <string.h>
 
-#ifndef ARDUINO
+//#ifndef ARDUINO
 
 #include <limits>
 #define NaN std::numeric_limits<double>::quiet_NaN();
 
-#else
+// #else
 
-#define NaN (0.0 / 0.0)
+// #define NaN (0.0 / 0.0)
 
-#endif
+// #endif
 
 
 #include "moteus_multiplex.h"
@@ -245,11 +245,11 @@ struct Query {
     double value = 0.0;
   };
 
-#ifndef ARDUINO
+//#ifndef ARDUINO
   static constexpr int16_t kMaxExtra = 16;
-#else
-  static constexpr int16_t kMaxExtra = 8;
-#endif
+// #else
+//   static constexpr int16_t kMaxExtra = 8;
+// #endif
 
   struct Result {
     Mode mode = Mode::kStopped;
@@ -519,11 +519,11 @@ struct Query {
       uint8_t block_size;
       int8_t concrete;
     };
-#ifndef ARDUINO
+//#ifndef ARDUINO
     static constexpr RegisterDefinition kRegisterDefinitions[] = {
-#else
-    static constexpr RegisterDefinition PROGMEM kRegisterDefinitions[] = {
-#endif
+// #else
+//     static constexpr RegisterDefinition PROGMEM kRegisterDefinitions[] = {
+// #endif
       { R::kMode,        1, MP::kInt, },
       { R::kPosition,    1, MP::kPosition, },
       { R::kVelocity,    1, MP::kVelocity, },
@@ -630,15 +630,15 @@ struct Query {
          i < sizeof(kRegisterDefinitions) / sizeof (*kRegisterDefinitions);
          i ++) {
 
-#ifndef ARDUINO
+//#ifndef ARDUINO
       const int16_t start_reg = kRegisterDefinitions[i].register_number;
       const uint8_t block_size = kRegisterDefinitions[i].block_size;
       const int8_t concrete_type = kRegisterDefinitions[i].concrete;
-#else
-      const int16_t start_reg = pgm_read_word_near(&kRegisterDefinitions[i].register_number);
-      const uint8_t block_size = pgm_read_byte_near(&kRegisterDefinitions[i].block_size);
-      const int8_t concrete_type = pgm_read_byte_near(kRegisterDefinitions[i].concrete);
-#endif
+// #else
+//       const int16_t start_reg = pgm_read_word_near(&kRegisterDefinitions[i].register_number);
+//       const uint8_t block_size = pgm_read_byte_near(&kRegisterDefinitions[i].block_size);
+//       const int8_t concrete_type = pgm_read_byte_near(kRegisterDefinitions[i].concrete);
+// #endif
       if (register_number >= start_reg &&
           register_number < (start_reg + block_size)) {
         return parser->ReadConcrete(res, concrete_type);

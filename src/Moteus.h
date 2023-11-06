@@ -15,6 +15,7 @@
 #pragma once
 
 #include "moteus_protocol.h"
+#include <ACAN_T4.h>
 
 namespace mm = mjbots::moteus;
 
@@ -74,7 +75,7 @@ class Moteus {
     Options() {}
   };
 
-  Moteus(ACAN2517FD& can_bus,
+  Moteus(ACAN_T4& can_bus,
          const Options& options = {})
       : can_bus_(can_bus),
         options_(options) {
@@ -457,7 +458,7 @@ class Moteus {
     if (!can_bus_.available()) { return false; }
 
     CANFDMessage rx_msg;
-    can_bus_.receive(rx_msg);
+    can_bus_.receiveFD(rx_msg);
 
     const int8_t source = (rx_msg.id >> 8) & 0x7f;
     const int8_t destination = (rx_msg.id & 0x7f);
@@ -520,7 +521,7 @@ class Moteus {
 
     PadCan(&can_message);
 
-    can_bus_.tryToSend(can_message);
+    can_bus_.tryToSendFD(can_message);
 
     return frame.reply_required;
   }
@@ -624,7 +625,7 @@ class Moteus {
     msg->len = new_size;
   }
 
-  ACAN2517FD& can_bus_;
+  ACAN_T4& can_bus_;
   const Options options_;
 
   Result last_result_;
