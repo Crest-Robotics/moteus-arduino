@@ -34,7 +34,7 @@ namespace mm = mjbots::moteus;
 ///     user call Poll() regularly to check for a response, and then
 ///     retrieve that response from Moteus::last_result().
 class Moteus {
- public:
+public:
   using CanFdFrame = mm::CanFdFrame;
   static constexpr int kDiagnosticTimeoutUs = 4000;
 
@@ -74,18 +74,19 @@ class Moteus {
     Options() {}
   };
 
-  Moteus(ACAN2517FD& can_bus,
-         const Options& options = {})
-      : can_bus_(can_bus),
-        options_(options) {
+  Moteus(ACAN2517FD &can_bus, const Options &options = {})
+      : can_bus_(can_bus), options_(options) {
     mm::CanData can_data;
     mm::WriteCanData query_write(&can_data);
     mm::Query::Make(&query_write, options_.query_format);
 
     query_size_ = can_data.size;
-    query_data_ = reinterpret_cast<char*>(realloc(query_data_, query_size_));
+    query_data_ = reinterpret_cast<char *>(realloc(query_data_, query_size_));
     ::memcpy(query_data_, &can_data.data[0], query_size_);
   }
+
+  virtual ~Moteus() {}
+  virtual bool isMock() { return false; }
 
   struct Result {
     unsigned long timestamp = 0;
@@ -94,87 +95,85 @@ class Moteus {
   };
 
   // The most recent result from any command.
-  const Result& last_result() const { return last_result_; }
+  virtual const Result &last_result() const {
+    // Serial.println("returning last result");
+    return last_result_;
+  }
 
 
   /////////////////////////////////////////
   // Query
 
-  CanFdFrame MakeQuery(const mm::Query::Format* format_override = nullptr) {
+  CanFdFrame MakeQuery(const mm::Query::Format *format_override = nullptr) {
     return MakeFrame(mm::EmptyMode(), {}, {},
-                     format_override == nullptr ?
-                     &options_.query_format : format_override);
+                     format_override == nullptr ? &options_.query_format
+                                                : format_override);
   }
 
-  bool SetQuery(const mm::Query::Format* query_override = nullptr) {
+  bool SetQuery(const mm::Query::Format *query_override = nullptr) {
     return ExecuteSingleCommand(MakeQuery(query_override));
   }
-
 
   /////////////////////////////////////////
   // StopMode
 
-  CanFdFrame MakeStop(const mm::Query::Format* query_override = nullptr) {
+  CanFdFrame MakeStop(const mm::Query::Format *query_override = nullptr) {
     return MakeFrame(mm::StopMode(), {}, {}, query_override);
   }
 
-  bool SetStop(const mm::Query::Format* query_override = nullptr) {
+  bool SetStop(const mm::Query::Format *query_override = nullptr) {
     return ExecuteSingleCommand(MakeStop(query_override));
   }
 
-  void BeginStop(const mm::Query::Format* query_override = nullptr) {
+  void BeginStop(const mm::Query::Format *query_override = nullptr) {
     BeginSingleCommand(MakeStop(query_override));
   }
-
 
   /////////////////////////////////////////
   // BrakeMode
 
-
-  CanFdFrame MakeBrake(const mm::Query::Format* query_override = nullptr) {
+  CanFdFrame MakeBrake(const mm::Query::Format *query_override = nullptr) {
     return MakeFrame(mm::BrakeMode(), {}, {}, query_override);
   }
 
-  bool SetBrake(const mm::Query::Format* query_override = nullptr) {
+  bool SetBrake(const mm::Query::Format *query_override = nullptr) {
     return ExecuteSingleCommand(MakeBrake(query_override));
   }
 
-  void BeginBrake(const mm::Query::Format* query_override = nullptr) {
+  void BeginBrake(const mm::Query::Format *query_override = nullptr) {
     BeginSingleCommand(MakeBrake(query_override));
   }
-
 
   /////////////////////////////////////////
   // PositionMode
 
-  CanFdFrame MakePosition(const mm::PositionMode::Command& cmd,
-                          const mm::PositionMode::Format* command_override = nullptr,
-                          const mm::Query::Format* query_override = nullptr) {
-    return MakeFrame(mm::PositionMode(),
-                     cmd,
-                     (command_override == nullptr ?
-                      mm::PositionMode::Format() : *command_override),
+  CanFdFrame
+  MakePosition(const mm::PositionMode::Command &cmd,
+               const mm::PositionMode::Format *command_override = nullptr,
+               const mm::Query::Format *query_override = nullptr) {
+    return MakeFrame(mm::PositionMode(), cmd,
+                     (command_override == nullptr ? mm::PositionMode::Format()
+                                                  : *command_override),
                      query_override);
   }
 
-  bool SetPosition(const mm::PositionMode::Command& cmd,
-                   const mm::PositionMode::Format* command_override = nullptr,
-                   const mm::Query::Format* query_override = nullptr) {
+  virtual bool SetPosition(const mm::PositionMode::Command &cmd,
+                   const mm::PositionMode::Format *command_override = nullptr,
+                   const mm::Query::Format *query_override = nullptr) {
     return ExecuteSingleCommand(
         MakePosition(cmd, command_override, query_override));
   }
 
-  void BeginPosition(const mm::PositionMode::Command& cmd,
-                     const mm::PositionMode::Format* command_override = nullptr,
-                     const mm::Query::Format* query_override = nullptr) {
-    BeginSingleCommand(
-        MakePosition(cmd, command_override, query_override));
+  void BeginPosition(const mm::PositionMode::Command &cmd,
+                     const mm::PositionMode::Format *command_override = nullptr,
+                     const mm::Query::Format *query_override = nullptr) {
+    BeginSingleCommand(MakePosition(cmd, command_override, query_override));
   }
 
-  bool SetPositionWaitComplete(const mm::PositionMode::Command& cmd,
-                               double period_s,
-                               const mm::PositionMode::Format* command_override = nullptr,
-                               const mm::Query::Format* query_override = nullptr) {
+  bool SetPositionWaitComplete(
+      const mm::PositionMode::Command &cmd, double period_s,
+      const mm::PositionMode::Format *command_override = nullptr,
+      const mm::Query::Format *query_override = nullptr) {
     mm::Query::Format query_format =
         query_override == nullptr ? options_.query_format : *query_override;
     query_format.trajectory_complete = kInt8;
@@ -187,11 +186,11 @@ class Moteus {
       const bool got_result = SetPosition(cmd, command_override, &query_format);
       if (got_result) {
         count = count - 1;
-        if (count < 0) { count = 0; }
+        if (count < 0) {
+          count = 0;
+        }
       }
-      if (count == 0 &&
-          got_result &&
-          last_result_.values.trajectory_complete) {
+      if (count == 0 && got_result && last_result_.values.trajectory_complete) {
         return true;
       }
 
@@ -199,84 +198,84 @@ class Moteus {
     }
   }
 
-
   /////////////////////////////////////////
   // VFOCMode
 
-  CanFdFrame MakeVFOC(const mm::VFOCMode::Command& cmd,
-                      const mm::VFOCMode::Format* command_override = nullptr,
-                      const mm::Query::Format* query_override = nullptr) {
-    return MakeFrame(mm::VFOCMode(),
-                     cmd,
-                     (command_override == nullptr ?
-                      mm::VFOCMode::Format() : *command_override),
+  CanFdFrame MakeVFOC(const mm::VFOCMode::Command &cmd,
+                      const mm::VFOCMode::Format *command_override = nullptr,
+                      const mm::Query::Format *query_override = nullptr) {
+    return MakeFrame(mm::VFOCMode(), cmd,
+                     (command_override == nullptr ? mm::VFOCMode::Format()
+                                                  : *command_override),
                      query_override);
   }
 
-  bool SetVFOC(const mm::VFOCMode::Command& cmd,
-               const mm::VFOCMode::Format* command_override = nullptr,
-               const mm::Query::Format* query_override = nullptr) {
-    return ExecuteSingleCommand(MakeVFOC(cmd, command_override, query_override));
+  bool SetVFOC(const mm::VFOCMode::Command &cmd,
+               const mm::VFOCMode::Format *command_override = nullptr,
+               const mm::Query::Format *query_override = nullptr) {
+    return ExecuteSingleCommand(
+        MakeVFOC(cmd, command_override, query_override));
   }
 
-  void BeginVFOC(const mm::VFOCMode::Command& cmd,
-                 const mm::VFOCMode::Format* command_override = nullptr,
-                 const mm::Query::Format* query_override = nullptr) {
+  void BeginVFOC(const mm::VFOCMode::Command &cmd,
+                 const mm::VFOCMode::Format *command_override = nullptr,
+                 const mm::Query::Format *query_override = nullptr) {
     BeginSingleCommand(MakeVFOC(cmd, command_override, query_override));
   }
-
 
   /////////////////////////////////////////
   // CurrentMode
 
-  CanFdFrame MakeCurrent(const mm::CurrentMode::Command& cmd,
-                         const mm::CurrentMode::Format* command_override = nullptr,
-                         const mm::Query::Format* query_override = nullptr) {
-    return MakeFrame(mm::CurrentMode(),
-                     cmd,
-                     (command_override == nullptr ?
-                      mm::CurrentMode::Format() : *command_override),
+  CanFdFrame
+  MakeCurrent(const mm::CurrentMode::Command &cmd,
+              const mm::CurrentMode::Format *command_override = nullptr,
+              const mm::Query::Format *query_override = nullptr) {
+    return MakeFrame(mm::CurrentMode(), cmd,
+                     (command_override == nullptr ? mm::CurrentMode::Format()
+                                                  : *command_override),
                      query_override);
   }
 
-  bool SetCurrent(const mm::CurrentMode::Command& cmd,
-                  const mm::CurrentMode::Format* command_override = nullptr,
-                  const mm::Query::Format* query_override = nullptr) {
-    return ExecuteSingleCommand(MakeCurrent(cmd, command_override, query_override));
+  bool SetCurrent(const mm::CurrentMode::Command &cmd,
+                  const mm::CurrentMode::Format *command_override = nullptr,
+                  const mm::Query::Format *query_override = nullptr) {
+    return ExecuteSingleCommand(
+        MakeCurrent(cmd, command_override, query_override));
   }
 
-  void BeginCurrent(const mm::CurrentMode::Command& cmd,
-                    const mm::CurrentMode::Format* command_override = nullptr,
-                    const mm::Query::Format* query_override = nullptr) {
+  void BeginCurrent(const mm::CurrentMode::Command &cmd,
+                    const mm::CurrentMode::Format *command_override = nullptr,
+                    const mm::Query::Format *query_override = nullptr) {
     BeginSingleCommand(MakeCurrent(cmd, command_override, query_override));
   }
-
 
   /////////////////////////////////////////
   // StayWithinMode
 
-  CanFdFrame MakeStayWithin(const mm::StayWithinMode::Command& cmd,
-                            const mm::StayWithinMode::Format* command_override = nullptr,
-                            const mm::Query::Format* query_override = nullptr) {
-    return MakeFrame(mm::StayWithinMode(),
-                     cmd,
-                     (command_override == nullptr ?
-                      mm::StayWithinMode::Format() : *command_override),
+  CanFdFrame
+  MakeStayWithin(const mm::StayWithinMode::Command &cmd,
+                 const mm::StayWithinMode::Format *command_override = nullptr,
+                 const mm::Query::Format *query_override = nullptr) {
+    return MakeFrame(mm::StayWithinMode(), cmd,
+                     (command_override == nullptr ? mm::StayWithinMode::Format()
+                                                  : *command_override),
                      query_override);
   }
 
-  bool SetStayWithin(const mm::StayWithinMode::Command& cmd,
-                     const mm::StayWithinMode::Format* command_override = nullptr,
-                     const mm::Query::Format* query_override = nullptr) {
-    return ExecuteSingleCommand(MakeStayWithin(cmd, command_override, query_override));
+  bool
+  SetStayWithin(const mm::StayWithinMode::Command &cmd,
+                const mm::StayWithinMode::Format *command_override = nullptr,
+                const mm::Query::Format *query_override = nullptr) {
+    return ExecuteSingleCommand(
+        MakeStayWithin(cmd, command_override, query_override));
   }
 
-  void BeginStayWithin(const mm::StayWithinMode::Command& cmd,
-                       const mm::StayWithinMode::Format* command_override = nullptr,
-                       const mm::Query::Format* query_override = nullptr) {
+  void
+  BeginStayWithin(const mm::StayWithinMode::Command &cmd,
+                  const mm::StayWithinMode::Format *command_override = nullptr,
+                  const mm::Query::Format *query_override = nullptr) {
     BeginSingleCommand(MakeStayWithin(cmd, command_override, query_override));
   }
-
 
   /////////////////////////////////////////
   // Diagnostic channel operations
@@ -286,7 +285,7 @@ class Moteus {
     kExpectSingleLine,
   };
 
-  String DiagnosticCommand(const String& message_in,
+  String DiagnosticCommand(const String &message_in,
                            DiagnosticReplyMode reply_mode = kExpectOK) {
     {
       String message = message_in + "\n";
@@ -330,14 +329,14 @@ class Moteus {
 
       while (true) {
         if (![&]() {
-          while (!Poll()) {
-            const auto now = micros();
-            if (static_cast<long>(now - end) > 0) {
-              return false;
-            }
-          }
-          return true;
-        }()) {
+              while (!Poll()) {
+                const auto now = micros();
+                if (static_cast<long>(now - end) > 0) {
+                  return false;
+                }
+              }
+              return true;
+            }()) {
           break;
         }
 
@@ -371,10 +370,10 @@ class Moteus {
         auto find_newline = [&]() {
           const int cr = current_line.indexOf('\r');
           const int nl = current_line.indexOf('\n');
-          const int first_newline =
-              (cr < 0 ? nl :
-               nl < 0 ? cr :
-               nl < cr ? nl : cr);
+          const int first_newline = (cr < 0    ? nl
+                                     : nl < 0  ? cr
+                                     : nl < cr ? nl
+                                               : cr);
           return first_newline;
         };
         int first_newline = -1;
@@ -412,14 +411,14 @@ class Moteus {
 
     while (true) {
       if (![&]() {
-        while (!Poll()) {
-          const auto now = micros();
-          if (static_cast<long>(now - end) > 0) {
-            return false;
-          }
-        }
-        return true;
-      }()) {
+            while (!Poll()) {
+              const auto now = micros();
+              if (static_cast<long>(now - end) > 0) {
+                return false;
+              }
+            }
+            return true;
+          }()) {
         return "";
       }
 
@@ -441,7 +440,9 @@ class Moteus {
   void SetDiagnosticFlush(int channel = 1) {
     while (true) {
       const auto response = SetDiagnosticRead(channel);
-      if (response.length() == 0) { return; }
+      if (response.length() == 0) {
+        return;
+      }
     }
   }
 
@@ -457,7 +458,9 @@ class Moteus {
     // Ensure any interrupts have been handled.
     can_bus_.poll();
 
-    if (!can_bus_.available()) { return false; }
+    if (!can_bus_.available()) {
+      return false;
+    }
 
     CANFDMessage rx_msg;
     can_bus_.receive(rx_msg);
@@ -466,15 +469,14 @@ class Moteus {
     const int8_t destination = (rx_msg.id & 0x7f);
     const uint16_t can_prefix = (rx_msg.id >> 16);
 
-    if (source != options_.id ||
-        destination != options_.source ||
+    if (source != options_.id || destination != options_.source ||
         can_prefix != options_.can_prefix) {
       return false;
     }
 
     last_result_.timestamp = now;
 
-    auto& cf = last_result_.frame;
+    auto &cf = last_result_.frame;
     cf.arbitration_id = rx_msg.id;
     cf.destination = destination;
     cf.source = source;
@@ -493,19 +495,19 @@ class Moteus {
       cf.fdcan_frame = mm::CanFdFrame::kForceOff;
     }
 
-    last_result_.values =
-        mm::Query::Parse(&cf.data[0], cf.size);
+    last_result_.values = mm::Query::Parse(&cf.data[0], cf.size);
 
     return true;
   }
 
-  bool BeginSingleCommand(const mm::CanFdFrame& frame) {
+  bool BeginSingleCommand(const mm::CanFdFrame &frame) {
     CANFDMessage can_message;
     can_message.id = frame.arbitration_id;
     can_message.ext = true;
     const bool desired_brs =
-        (frame.brs == CanFdFrame::kDefault ? !options_.disable_brs :
-         frame.brs == CanFdFrame::kForceOn ? true : false);
+        (frame.brs == CanFdFrame::kDefault   ? !options_.disable_brs
+         : frame.brs == CanFdFrame::kForceOn ? true
+                                             : false);
 
     if (frame.fdcan_frame == CanFdFrame::kDefault ||
         frame.fdcan_frame == CanFdFrame::kForceOn) {
@@ -534,10 +536,12 @@ class Moteus {
     return frame.reply_required;
   }
 
-  bool ExecuteSingleCommand(const mm::CanFdFrame& frame) {
+  bool ExecuteSingleCommand(const mm::CanFdFrame &frame) {
     const bool reply_required = BeginSingleCommand(frame);
 
-    if (!reply_required) { return false; }
+    if (!reply_required) {
+      return false;
+    }
 
     auto start = micros();
     auto end = start + options_.min_rcv_wait_us;
@@ -560,7 +564,7 @@ class Moteus {
     }
   }
 
- private:
+private:
   enum ReplyMode {
     kNoReply,
     kReplyRequired,
@@ -571,24 +575,22 @@ class Moteus {
     result.destination = options_.id;
     result.reply_required = (reply_mode == kReplyRequired);
 
-    result.arbitration_id =
-        (result.destination) |
-        (result.source << 8) |
-        (result.reply_required ? 0x8000 : 0x0000) |
-        (static_cast<uint32_t>(options_.can_prefix) << 16);
+    result.arbitration_id = (result.destination) | (result.source << 8) |
+                            (result.reply_required ? 0x8000 : 0x0000) |
+                            (static_cast<uint32_t>(options_.can_prefix) << 16);
     result.bus = 0;
 
     return result;
   }
 
   template <typename CommandType>
-  CanFdFrame MakeFrame(const CommandType&,
-                       const typename CommandType::Command& cmd,
-                       const typename CommandType::Format& fmt,
-                       const mm::Query::Format* query_override = nullptr) {
-    auto result = DefaultFrame(
-        query_override != nullptr ? kReplyRequired :
-        options_.default_query ? kReplyRequired : kNoReply);
+  CanFdFrame MakeFrame(const CommandType &,
+                       const typename CommandType::Command &cmd,
+                       const typename CommandType::Format &fmt,
+                       const mm::Query::Format *query_override = nullptr) {
+    auto result = DefaultFrame(query_override != nullptr ? kReplyRequired
+                               : options_.default_query  ? kReplyRequired
+                                                         : kNoReply);
 
     mm::WriteCanData write_frame(result.data, &result.size);
     CommandType::Make(&write_frame, cmd, fmt);
@@ -596,9 +598,7 @@ class Moteus {
     if (query_override) {
       mm::Query::Make(&write_frame, *query_override);
     } else if (options_.default_query) {
-      ::memcpy(&result.data[result.size],
-               query_data_,
-               query_size_);
+      ::memcpy(&result.data[result.size], query_data_, query_size_);
       result.size += query_size_;
     }
 
@@ -606,26 +606,58 @@ class Moteus {
   }
 
   static int8_t RoundUpDlc(int8_t size) {
-    if (size <= 0) { return 0; }
-    if (size <= 1) { return 1; }
-    if (size <= 2) { return 2; }
-    if (size <= 3) { return 3; }
-    if (size <= 4) { return 4; }
-    if (size <= 5) { return 5; }
-    if (size <= 6) { return 6; }
-    if (size <= 7) { return 7; }
-    if (size <= 8) { return 8; }
-    if (size <= 12) { return 12; }
-    if (size <= 16) { return 16; }
-    if (size <= 20) { return 20; }
-    if (size <= 24) { return 24; }
-    if (size <= 32) { return 32; }
-    if (size <= 48) { return 48; }
-    if (size <= 64) { return 64; }
+    if (size <= 0) {
+      return 0;
+    }
+    if (size <= 1) {
+      return 1;
+    }
+    if (size <= 2) {
+      return 2;
+    }
+    if (size <= 3) {
+      return 3;
+    }
+    if (size <= 4) {
+      return 4;
+    }
+    if (size <= 5) {
+      return 5;
+    }
+    if (size <= 6) {
+      return 6;
+    }
+    if (size <= 7) {
+      return 7;
+    }
+    if (size <= 8) {
+      return 8;
+    }
+    if (size <= 12) {
+      return 12;
+    }
+    if (size <= 16) {
+      return 16;
+    }
+    if (size <= 20) {
+      return 20;
+    }
+    if (size <= 24) {
+      return 24;
+    }
+    if (size <= 32) {
+      return 32;
+    }
+    if (size <= 48) {
+      return 48;
+    }
+    if (size <= 64) {
+      return 64;
+    }
     return 0;
   }
 
-  static void PadCan(CANFDMessage* msg) {
+  static void PadCan(CANFDMessage *msg) {
     const auto new_size = RoundUpDlc(msg->len);
     for (int8_t i = msg->len; i < new_size; i++) {
       msg->data[i] = 0x50;
@@ -633,10 +665,10 @@ class Moteus {
     msg->len = new_size;
   }
 
-  ACAN2517FD& can_bus_;
+  ACAN2517FD &can_bus_;
   const Options options_;
 
   Result last_result_;
-  char* query_data_ = nullptr;
+  char *query_data_ = nullptr;
   size_t query_size_ = 0;
 };
