@@ -15,6 +15,7 @@
 #pragma once
 
 #include "moteus_protocol.h"
+#include <ACAN_T4.h>
 
 namespace mm = mjbots::moteus;
 
@@ -74,7 +75,7 @@ public:
     Options() {}
   };
 
-  Moteus(ACAN2517FD &can_bus, const Options &options = {})
+  Moteus(ACAN_T4 &can_bus, const Options &options = {})
       : can_bus_(can_bus), options_(options) {
     mm::CanData can_data;
     mm::WriteCanData query_write(&can_data);
@@ -456,14 +457,14 @@ public:
     const auto now = micros();
 
     // Ensure any interrupts have been handled.
-    can_bus_.poll();
+    // can_bus_.poll();
 
     if (!can_bus_.available()) {
       return false;
     }
 
     CANFDMessage rx_msg;
-    can_bus_.receive(rx_msg);
+    can_bus_.receiveFD(rx_msg);
 
     const int8_t source = (rx_msg.id >> 8) & 0x7f;
     const int8_t destination = (rx_msg.id & 0x7f);
@@ -529,9 +530,9 @@ public:
     // interrupts, we will just poll it before and after attempting to
     // send our message.  This slows things down, but we're on an
     // Arduino, so who cares?
-    can_bus_.poll();
-    can_bus_.tryToSend(can_message);
-    can_bus_.poll();
+    // can_bus_.poll();
+    can_bus_.tryToSendFD(can_message);
+    // can_bus_.poll();
 
     return frame.reply_required;
   }
@@ -665,7 +666,7 @@ private:
     msg->len = new_size;
   }
 
-  ACAN2517FD &can_bus_;
+  ACAN_T4 &can_bus_;
   const Options options_;
 
   Result last_result_;
