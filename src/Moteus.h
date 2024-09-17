@@ -15,6 +15,7 @@
 #pragma once
 
 #include "moteus_protocol.h"
+#include <Arduino.h>
 
 namespace mm = mjbots::moteus;
 
@@ -86,7 +87,7 @@ public:
   }
 
   virtual ~Moteus() {}
-  virtual bool isMock() { return false; }
+
 
   struct Result {
     unsigned long timestamp = 0;
@@ -157,7 +158,7 @@ public:
                      query_override);
   }
 
-  virtual bool SetPosition(const mm::PositionMode::Command &cmd,
+   bool SetPosition(const mm::PositionMode::Command &cmd,
                    const mm::PositionMode::Format *command_override = nullptr,
                    const mm::Query::Format *query_override = nullptr) {
     return ExecuteSingleCommand(
@@ -529,14 +530,16 @@ public:
     // interrupts, we will just poll it before and after attempting to
     // send our message.  This slows things down, but we're on an
     // Arduino, so who cares?
-    can_bus_.poll();
+    // can_bus_.poll();
+    // Serial.println(can_bus_.tryToSend(can_message));
     can_bus_.tryToSend(can_message);
-    can_bus_.poll();
+    // can_bus_.poll();
 
     return frame.reply_required;
   }
 
   bool ExecuteSingleCommand(const mm::CanFdFrame &frame) {
+    // Serial.println("ENTERED ExecuteSingleCommand");
     const bool reply_required = BeginSingleCommand(frame);
 
     if (!reply_required) {
@@ -552,6 +555,9 @@ public:
       const auto delta = static_cast<long>(now - end);
       if (delta > 0) {
         // We timed out.
+        // Serial.print("TIMED OUT: ");
+        // Serial.println(options_.id);
+        delayNanoseconds(10); //i have no idea why this works but it seems to stop the program from hanging
         return false;
       }
 
@@ -559,6 +565,7 @@ public:
         got_a_response = true;
       } else if (got_a_response) {
         // We both received a response, and have no more queued up.
+        // Serial.println("GOT A RESPONSE");
         return true;
       }
     }
