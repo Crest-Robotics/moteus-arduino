@@ -656,6 +656,47 @@ class MoteusController {
   /////////////////////////////////////////
   // Non-command related methods
 
+  /// Process an already-received CAN frame. Returns true if this frame
+  /// was for this motor (source ID matches). Use this for multi-motor
+  /// dispatch: receive one frame, try ProcessFrame on each motor.
+  bool ProcessFrame(const CANFDMessage& rx_msg) {
+    const int8_t source = (rx_msg.id >> 8) & 0x7f;
+    const int8_t destination = (rx_msg.id & 0x7f);
+    const uint16_t can_prefix = (rx_msg.id >> 16);
+
+    if (source != options_.id ||
+        destination != options_.source ||
+        can_prefix != options_.can_prefix) {
+      return false;
+    }
+
+    last_result_.timestamp = moteus_micros();
+
+    auto& cf = last_result_.frame;
+    cf.arbitration_id = rx_msg.id;
+    cf.destination = destination;
+    cf.source = source;
+    cf.size = rx_msg.len;
+    ::memcpy(&cf.data[0], &rx_msg.data[0], rx_msg.len);
+    cf.can_prefix = can_prefix;
+
+    if (rx_msg.type == CANFDMessage::CANFD_WITH_BIT_RATE_SWITCH) {
+      cf.brs = mm::CanFdFrame::kForceOn;
+      cf.fdcan_frame = mm::CanFdFrame::kForceOn;
+    } else if (rx_msg.type == CANFDMessage::CANFD_NO_BIT_RATE_SWITCH) {
+      cf.brs = mm::CanFdFrame::kForceOff;
+      cf.fdcan_frame = mm::CanFdFrame::kForceOn;
+    } else {
+      cf.brs = mm::CanFdFrame::kForceOff;
+      cf.fdcan_frame = mm::CanFdFrame::kForceOff;
+    }
+
+    last_result_.values =
+        mm::Query::Parse(&cf.data[0], cf.size);
+
+    return true;
+  }
+
   /// Look for a response to a previous command.  Return true if one
   /// has been received.  The parsed results can be seen in
   /// Moteus::last_result()
@@ -742,6 +783,7 @@ class MoteusController {
     return frame.reply_required;
   }
 
+  __attribute__((optimize("O0")))
   bool ExecuteSingleCommand(const mm::CanFdFrame& frame) {
     const bool reply_required = BeginSingleCommand(frame);
 
