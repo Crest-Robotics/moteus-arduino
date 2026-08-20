@@ -95,6 +95,7 @@ enum Register : uint16_t {
   kQCurrent = 0x004,
   kDCurrent = 0x005,
   kAbsPosition = 0x006,
+  kPower = 0x007,
 
   kMotorTemperature = 0x00a,
   kTrajectoryComplete = 0x00b,
@@ -259,6 +260,7 @@ struct Query {
     double q_current = NaN;
     double d_current = NaN;
     double abs_position = NaN;
+    double power = NaN;
     double motor_temperature = NaN;
     bool trajectory_complete = false;
     HomeState home_state = HomeState::kRelative;
@@ -292,6 +294,7 @@ struct Query {
     Resolution q_current = kIgnore;
     Resolution d_current = kIgnore;
     Resolution abs_position = kIgnore;
+    Resolution power = kIgnore;
     Resolution motor_temperature = kIgnore;
     Resolution trajectory_complete = kIgnore;
     Resolution home_state = kIgnore;
@@ -319,6 +322,7 @@ struct Query {
         format.q_current,
         format.d_current,
         format.abs_position,
+        format.power,
       };
       const uint16_t kResolutionsSize = sizeof(kResolutions) / sizeof(*kResolutions);
       WriteCombiner combiner(
@@ -456,6 +460,10 @@ struct Query {
         }
         case Register::kAbsPosition: {
           result.abs_position = parser->ReadPosition(res);
+          break;
+        }
+        case Register::kPower: {
+          result.power = parser->ReadPower(res);
           break;
         }
         case Register::kMotorTemperature: {
