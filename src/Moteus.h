@@ -70,6 +70,7 @@ class MoteusController {
   static constexpr mm::Resolution kInt16 = mm::Resolution::kInt16;
   static constexpr mm::Resolution kInt32 = mm::Resolution::kInt32;
   static constexpr mm::Resolution kFloat = mm::Resolution::kFloat;
+  static constexpr mm::Resolution kIgnore = mm::Resolution::kIgnore;
 
   struct Options {
     // The ID of the servo to communicate with.
